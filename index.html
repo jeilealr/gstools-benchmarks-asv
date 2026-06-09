@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GSTools Two-Point Statistics Backend Comparison</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f3f6f8;
+  --panel: #ffffff;
+  --panel-muted: #f8fafb;
+  --line: #d9e1e7;
+  --line-strong: #b9c6cf;
+  --text: #17202a;
+  --muted: #607080;
+  --accent: #0f766e;
+  --accent-soft: #e6f3f1;
+  --accent-strong: #0b5f59;
+  --cython: #2f72b7;
+  --rust: #c75a3c;
+  --shadow: 0 14px 34px rgba(26, 44, 56, 0.08);
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0;
+}
+header, main {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 24px 32px;
+  width: 100%;
+}
+header {
+  padding-bottom: 8px;
+}
+.brand-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+}
+.brand-copy {
+  min-width: 0;
+}
+.brand-logo {
+  flex: 0 0 auto;
+  height: 82px;
+  width: 82px;
+}
+.brand-fallback {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--accent-strong);
+  display: flex;
+  flex: 0 0 auto;
+  font-weight: 800;
+  height: 82px;
+  justify-content: center;
+  width: 82px;
+}
+h1 {
+  font-size: 30px;
+  letter-spacing: 0;
+  line-height: 1.15;
+  margin: 8px 0 10px;
+}
+p {
+  color: var(--muted);
+  margin: 0;
+  max-width: 780px;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lede {
+  font-size: 15px;
+}
+.report-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+.report-links a {
+  color: var(--accent-strong);
+  font-weight: 650;
+  text-decoration: none;
+}
+.report-links a:hover {
+  text-decoration: underline;
+}
+.machine-summary {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.machine-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+}
+.machine-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.controls, .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.controls {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  padding: 18px;
+}
+.wide-control {
+  grid-column: span 2;
+}
+.filter-control {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+.filter-control legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  margin-bottom: 7px;
+  padding: 0;
+  text-transform: uppercase;
+}
+.checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+}
+.check-label {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--text);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  line-height: 1.2;
+  min-height: 22px;
+  padding: 1px 0;
+  text-transform: none;
+}
+.check-label:has(input:checked) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent-strong);
+}
+.check-label input {
+  accent-color: var(--accent);
+  margin: 0;
+  width: 13px;
+}
+.panel {
+  margin-top: 20px;
+  padding: 20px;
+}
+.panel-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: -2px 0 18px;
+  padding-bottom: 14px;
+}
+.panel-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.panel-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+#chart {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+  padding: 8px;
+}
+svg {
+  display: block;
+  height: auto;
+  max-width: none;
+  min-width: 100%;
+  width: auto;
+}
+.axis, .grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.tick, .bar-label, .legend, .axis-label {
+  fill: var(--muted);
+  font-size: 12px;
+}
+.title {
+  fill: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+.line-path {
+  fill: none;
+  stroke-width: 2;
+}
+.point {
+  fill: var(--panel);
+  stroke-width: 2;
+}
+.cython {
+  fill: var(--cython);
+}
+.rust {
+  fill: var(--rust);
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 12px;
+}
+.legend-chip {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+}
+.legend-swatch {
+  border-radius: 2px;
+  display: inline-block;
+  height: 3px;
+  width: 20px;
+}
+@media (max-width: 700px) {
+  header, main {
+    padding: 18px;
+  }
+  .controls {
+    grid-template-columns: 1fr;
+  }
+  .wide-control {
+    grid-column: auto;
+  }
+  .brand-row {
+    gap: 16px;
+  }
+  .brand-logo, .brand-fallback {
+    height: 60px;
+    width: 60px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand-row">
+    <div class="brand-copy">
+      <div class="eyebrow">ASV benchmark report</div>
+      <h1>GSTools Two-Point Statistics Backend Comparison</h1>
+      <p class="lede">
+        Cython and Rust backend results grouped side by side for selected
+        two-point statistics cases, thread counts, commits, and metrics.
+      </p>
+      <div class="report-links">
+        <a href="asv/">Complete native ASV history</a>
+        <a href="https://asv.readthedocs.io/" rel="noreferrer">
+          Powered by Airspeed Velocity (ASV)
+        </a>
+      </div>
+    </div>
+    <img class="brand-logo" src="data:image/png;base64,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" alt="GSTools logo">
+  </div>
+  <div class="machine-summary"><div class="machine-card"><strong>github-actions-ubuntu</strong><span>Linux 6.17.0-1015-azure · x86_64 · AMD EPYC 7763 64-Core Processor · 4 CPUs · 15.6 GiB · Python 3.14</span></div></div>
+</header>
+<main>
+  <section class="controls">
+    <fieldset class="filter-control">
+      <legend>Metric</legend>
+      <div id="metric" class="checkbox-list"></div>
+    </fieldset>
+	    <fieldset class="filter-control">
+	      <legend>Family</legend>
+	      <div id="family" class="checkbox-list"></div>
+	    </fieldset>
+	    <fieldset class="filter-control">
+	      <legend>View</legend>
+	      <div id="viewMode" class="checkbox-list"></div>
+	    </fieldset>
+	    <fieldset class="filter-control wide-control">
+	      <legend>Case</legend>
+	      <div id="case" class="checkbox-list"></div>
+	    </fieldset>
+	    <fieldset class="filter-control">
+	      <legend>Threads</legend>
+	      <div id="threads" class="checkbox-list"></div>
+	    </fieldset>
+	    <fieldset class="filter-control wide-control">
+	      <legend>Commit</legend>
+	      <div id="commit" class="checkbox-list"></div>
+	    </fieldset>
+	    <fieldset class="filter-control">
+	      <legend>Backend</legend>
+	      <div id="backend" class="checkbox-list"></div>
+	    </fieldset>
+	  </section>
+	  <section class="panel">
+	    <div class="panel-header">
+	      <div class="panel-title" id="chart-title">Benchmark visualization</div>
+	      <div class="panel-note">Lower values are better</div>
+	    </div>
+	    <div id="chart"></div>
+	    <div id="legend" class="chart-legend"></div>
+	  </section>
+</main>
+<script>
+const rows = [{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_1","backend":"cython_fallback","value":131284992.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_1","backend":"rust_core","value":131891200.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_2","backend":"cython_fallback","value":131297280.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_2","backend":"rust_core","value":131809280.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_4","backend":"cython_fallback","value":131313664.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_4","backend":"rust_core","value":131706880.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_8","backend":"cython_fallback","value":131334144.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"condsrf_unstructured","threads":"threads_8","backend":"rust_core","value":131923968.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_1","backend":"cython_fallback","value":119365632.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_1","backend":"rust_core","value":120381440.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_2","backend":"cython_fallback","value":119500800.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_2","backend":"rust_core","value":120381440.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_4","backend":"cython_fallback","value":119500800.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_4","backend":"rust_core","value":120721408.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_8","backend":"cython_fallback","value":119631872.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_fourier","threads":"threads_8","backend":"rust_core","value":120696832.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_1","backend":"cython_fallback","value":119459840.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_1","backend":"rust_core","value":120684544.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_2","backend":"cython_fallback","value":119595008.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_2","backend":"rust_core","value":120623104.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_4","backend":"cython_fallback","value":119595008.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_4","backend":"rust_core","value":120680448.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_8","backend":"cython_fallback","value":119726080.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_structured_randmeth","threads":"threads_8","backend":"rust_core","value":120684544.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_1","backend":"cython_fallback","value":119361536.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_1","backend":"rust_core","value":120393728.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_2","backend":"cython_fallback","value":119496704.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_2","backend":"rust_core","value":120393728.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_4","backend":"cython_fallback","value":119496704.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_4","backend":"rust_core","value":120582144.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_8","backend":"cython_fallback","value":119627776.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_field_generation","family":"field","metric":"memory","case":"srf_unstructured_randmeth","threads":"threads_8","backend":"rust_core","value":120582144.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_1","backend":"cython_fallback","value":216514560.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_1","backend":"rust_core","value":216711168.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_2","backend":"cython_fallback","value":216702976.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_2","backend":"rust_core","value":216535040.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_4","backend":"cython_fallback","value":216514560.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_4","backend":"rust_core","value":216539136.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_8","backend":"cython_fallback","value":216604672.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"extra_large_360x6000","threads":"threads_8","backend":"rust_core","value":216584192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_1","backend":"cython_fallback","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_1","backend":"rust_core","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_2","backend":"cython_fallback","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_2","backend":"rust_core","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_4","backend":"cython_fallback","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_4","backend":"rust_core","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_8","backend":"cython_fallback","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"large_120x2000","threads":"threads_8","backend":"rust_core","value":140808192.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_1","backend":"cython_fallback","value":121208832.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_1","backend":"rust_core","value":122089472.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_2","backend":"cython_fallback","value":121208832.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_2","backend":"rust_core","value":122126336.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_4","backend":"cython_fallback","value":121208832.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_4","backend":"rust_core","value":122060800.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_8","backend":"cython_fallback","value":121208832.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_global_krige","family":"krige","metric":"memory","case":"small_30x500","threads":"threads_8","backend":"rust_core","value":122253312.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_1","backend":"cython_fallback","value":114991104.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_1","backend":"rust_core","value":115982336.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_2","backend":"cython_fallback","value":115126272.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_2","backend":"rust_core","value":116305920.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_4","backend":"cython_fallback","value":115126272.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_4","backend":"rust_core","value":116301824.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_8","backend":"cython_fallback","value":115257344.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"full_900","threads":"threads_8","backend":"rust_core","value":116326400.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_1","backend":"cython_fallback","value":116436992.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_1","backend":"rust_core","value":117841920.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_2","backend":"cython_fallback","value":116572160.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_2","backend":"rust_core","value":117710848.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_4","backend":"cython_fallback","value":116572160.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_4","backend":"rust_core","value":117559296.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_8","backend":"cython_fallback","value":116834304.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_15000_to_4500","threads":"threads_8","backend":"rust_core","value":117747712.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_1","backend":"cython_fallback","value":116064256.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_1","backend":"rust_core","value":117186560.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_2","backend":"cython_fallback","value":116199424.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_2","backend":"rust_core","value":117186560.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_4","backend":"cython_fallback","value":116199424.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_4","backend":"rust_core","value":117186560.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_8","backend":"cython_fallback","value":116199424.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"peakmem_variogram_estimate","family":"variogram","metric":"memory","case":"sampled_5000_to_1500","threads":"threads_8","backend":"rust_core","value":117522432.0,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_1","backend":"cython_fallback","value":0.05894144050000705,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_1","backend":"rust_core","value":0.029471709000006285,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_2","backend":"cython_fallback","value":0.05596128950003276,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_2","backend":"rust_core","value":0.028351648999944246,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_4","backend":"cython_fallback","value":0.05389841449994037,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_4","backend":"rust_core","value":0.026971954499970252,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_8","backend":"cython_fallback","value":0.045421443499947145,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"condsrf_unstructured","threads":"threads_8","backend":"rust_core","value":0.026954532999980074,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_1","backend":"cython_fallback","value":0.08921703200002185,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_1","backend":"rust_core","value":0.08717332100002295,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_2","backend":"cython_fallback","value":0.046408709499985434,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_2","backend":"rust_core","value":0.04513391400001865,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_4","backend":"cython_fallback","value":0.03594300099996417,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_4","backend":"rust_core","value":0.035672643999987486,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_8","backend":"cython_fallback","value":0.03535202099999424,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_fourier","threads":"threads_8","backend":"rust_core","value":0.035594259500044245,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_1","backend":"cython_fallback","value":0.0667869095000242,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_1","backend":"rust_core","value":0.0647330850000003,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_2","backend":"cython_fallback","value":0.035066639999968174,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_2","backend":"rust_core","value":0.03391800699995429,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_4","backend":"cython_fallback","value":0.02298340449999614,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_4","backend":"rust_core","value":0.022725453499958803,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_8","backend":"cython_fallback","value":0.022384942000030605,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_structured_randmeth","threads":"threads_8","backend":"rust_core","value":0.022334810500012736,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_1","backend":"cython_fallback","value":0.03452198299999054,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_1","backend":"rust_core","value":0.03357113149996849,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_2","backend":"cython_fallback","value":0.01847072950005213,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_2","backend":"rust_core","value":0.018011781500035795,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_4","backend":"cython_fallback","value":0.012781351000000996,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_4","backend":"rust_core","value":0.012402962999999545,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_8","backend":"cython_fallback","value":0.012276380000002973,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_field_generation","family":"field","metric":"time","case":"srf_unstructured_randmeth","threads":"threads_8","backend":"rust_core","value":0.012370491500064418,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_1","backend":"cython_fallback","value":0.6068440849999774,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_1","backend":"rust_core","value":0.4005833859999939,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_2","backend":"cython_fallback","value":0.6063076734999981,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_2","backend":"rust_core","value":0.40404220900003907,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_4","backend":"cython_fallback","value":0.6073766240000111,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_4","backend":"rust_core","value":0.40224140700001954,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_8","backend":"cython_fallback","value":0.6082671124999592,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"extra_large_360x6000","threads":"threads_8","backend":"rust_core","value":0.4020480924999674,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_1","backend":"cython_fallback","value":0.04790901199999098,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_1","backend":"rust_core","value":0.03818115399994326,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_2","backend":"cython_fallback","value":0.05543789999995852,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_2","backend":"rust_core","value":0.034786177999990286,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_4","backend":"cython_fallback","value":0.05192975549999801,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_4","backend":"rust_core","value":0.035520643000040764,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_8","backend":"cython_fallback","value":0.05227137649998781,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"large_120x2000","threads":"threads_8","backend":"rust_core","value":0.03636699750001071,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_1","backend":"cython_fallback","value":0.0018373200833442147,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_1","backend":"rust_core","value":0.0018017521666611933,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_2","backend":"cython_fallback","value":0.001845986749993737,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_2","backend":"rust_core","value":0.0018061679166692102,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_4","backend":"cython_fallback","value":0.001854388666667243,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_4","backend":"rust_core","value":0.0017871285000031398,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_8","backend":"cython_fallback","value":0.0018514555833301452,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_global_krige","family":"krige","metric":"time","case":"small_30x500","threads":"threads_8","backend":"rust_core","value":0.0017754670833293553,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_1","backend":"cython_fallback","value":0.12013437299998486,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_1","backend":"rust_core","value":0.055746146500041505,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_2","backend":"cython_fallback","value":0.06821922900002164,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_2","backend":"rust_core","value":0.028747377499996674,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_4","backend":"cython_fallback","value":0.051775279499963744,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_4","backend":"rust_core","value":0.020454017000076874,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_8","backend":"cython_fallback","value":0.04696815249997144,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"full_900","threads":"threads_8","backend":"rust_core","value":0.0201861800000529,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_1","backend":"cython_fallback","value":3.0569752300000346,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_1","backend":"rust_core","value":1.462529085500023,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_2","backend":"cython_fallback","value":1.7612099289999605,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_2","backend":"rust_core","value":0.7616156685000419,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_4","backend":"cython_fallback","value":1.2442713595000328,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_4","backend":"rust_core","value":0.5218904454999347,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_8","backend":"cython_fallback","value":1.1699414959999785,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_15000_to_4500","threads":"threads_8","backend":"rust_core","value":0.49856786800006603,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_1","backend":"cython_fallback","value":0.3359264974999405,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_1","backend":"rust_core","value":0.1633225540000467,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_2","backend":"cython_fallback","value":0.19273945149996052,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_2","backend":"rust_core","value":0.0853626370000029,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_4","backend":"cython_fallback","value":0.13933471799998642,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_4","backend":"rust_core","value":0.059417958499977885,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_8","backend":"cython_fallback","value":0.13265588899997738,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"},{"benchmark":"time_variogram_estimate","family":"variogram","metric":"time","case":"sampled_5000_to_1500","threads":"threads_8","backend":"rust_core","value":0.05756396399993946,"source":".asv-openmp/results","commit":"06c68f21","commit_hash":"06c68f2117f476a8802730def361b305454bbb7d","date":1780985652000,"date_label":"2026-06-09","env":"conda-py3.14-c-compiler-cxx-compiler-cython-emcee-extension-helpers-hankel-meshio-numpy-pyevtk-scipy-setuptools_=77-wheel","python":"3.14","machine":"github-actions-ubuntu","os":"Linux 6.17.0-1015-azure","arch":"x86_64","cpu":"AMD EPYC 7763 64-Core Processor","num_cpu":"4","ram":"16373460"}];
+const backends = ["cython_fallback", "rust_core"];
+const colors = {cython_fallback: "#2f75b5", rust_core: "#d05a45"};
+const linePalette = [
+  "#2f75b5", "#d05a45", "#0f766e", "#9467bd", "#8c6d31", "#6b7280",
+  "#1f9fb2", "#b44e9d", "#6f9e3f", "#d38b2f", "#4b5cc4", "#a14f3f"
+];
+const labels = {
+  cython_fallback: "Cython fallback",
+  rust_core: "Rust core"
+};
+const modeLabels = {
+  bar: "Bar plot",
+  line: "Line plot"
+};
+const metricUnits = {
+  time: {label: "time", unit: "ms", factor: 1000},
+  memory: {label: "peak memory", unit: "MiB", factor: 1 / (1024 * 1024)}
+};
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function unique(values) {
+  return Array.from(new Set(values)).sort((a, b) => {
+    const ta = Number(String(a).replace("threads_", ""));
+    const tb = Number(String(b).replace("threads_", ""));
+    if (!Number.isNaN(ta) && !Number.isNaN(tb)) return ta - tb;
+    return String(a).localeCompare(String(b));
+  });
+}
+
+function optionText(kind, value) {
+  if (kind === "commit") {
+    const row = rows.find(item => item.commit === value);
+    return row ? `${value} (${row.date_label})` : value;
+  }
+  return value;
+}
+
+function commitOrder(values) {
+  return unique(values).sort((a, b) => {
+    const ra = rows.find(item => item.commit === a);
+    const rb = rows.find(item => item.commit === b);
+    const da = ra ? ra.date : 0;
+    const db = rb ? rb.date : 0;
+    if (da !== db) return da - db;
+    return String(a).localeCompare(String(b));
+  });
+}
+
+function checkedValues(id) {
+  return Array.from(
+    document.querySelectorAll(`#${id} input[type="checkbox"]:checked`)
+  ).map(input => input.value);
+}
+
+function setCheckboxes(
+  id,
+  values,
+  previousValues = [],
+  textByValue = {},
+  defaultValues = null
+) {
+  const container = document.getElementById(id);
+  const retained = values.filter(value => previousValues.includes(value));
+  const defaults = defaultValues === null ? values : defaultValues;
+  const selected = new Set(retained.length ? retained : defaults.filter(value => values.includes(value)));
+  if (!selected.size && values.length) selected.add(values[0]);
+  container.innerHTML = values.map(value => {
+    const checked = selected.has(value) ? " checked" : "";
+    const text = textByValue[value] || optionText(id, value);
+    return (
+      `<label class="check-label">` +
+      `<input type="checkbox" value="${escapeHtml(value)}"${checked}>` +
+      `<span>${escapeHtml(text)}</span>` +
+      `</label>`
+    );
+  }).join("");
+}
+
+function enforceSingleChoice(id, event) {
+  if (!event.target.matches("input[type='checkbox']")) return;
+  const inputs = Array.from(document.querySelectorAll(`#${id} input[type="checkbox"]`));
+  if (event.target.checked) {
+    for (const input of inputs) {
+      if (input !== event.target) input.checked = false;
+    }
+    return;
+  }
+  if (!inputs.some(input => input.checked)) {
+    event.target.checked = true;
+  }
+}
+
+function enforceAtLeastOne(id, event) {
+  if (!event.target.matches("input[type='checkbox']")) return;
+  const inputs = Array.from(document.querySelectorAll(`#${id} input[type="checkbox"]`));
+  if (!inputs.some(input => input.checked)) {
+    event.target.checked = true;
+  }
+}
+
+function metricValue() {
+  return checkedValues("metric")[0] || "";
+}
+
+function familyValue() {
+  return checkedValues("family")[0] || "";
+}
+
+function viewModeValue() {
+  return checkedValues("viewMode")[0] || "line";
+}
+
+function selectedBenchmark() {
+  const candidates = unique(rows
+    .filter(row => row.metric === metricValue() && row.family === familyValue())
+    .map(row => row.benchmark));
+  return candidates[0] || "";
+}
+
+function benchmarkRows() {
+  const benchmark = selectedBenchmark();
+  return rows.filter(row =>
+    row.metric === metricValue() &&
+    row.family === familyValue() &&
+    row.benchmark === benchmark
+  );
+}
+
+function filteredRows() {
+  const metric = metricValue();
+  const family = familyValue();
+  const benchmark = selectedBenchmark();
+  const cases = checkedValues("case");
+  const threads = checkedValues("threads");
+  const commits = checkedValues("commit");
+  const selectedBackends = checkedValues("backend");
+  return rows.filter(row =>
+    (!metric || row.metric === metric) &&
+    (!family || row.family === family) &&
+    (!benchmark || row.benchmark === benchmark) &&
+    cases.includes(row.case) &&
+    threads.includes(row.threads) &&
+    commits.includes(row.commit) &&
+    selectedBackends.includes(row.backend)
+  );
+}
+
+function lastValue(values) {
+  return values.length ? values[values.length - 1] : "";
+}
+
+function refreshOptions() {
+  const previousMain = {
+    metrics: checkedValues("metric"),
+    families: checkedValues("family"),
+    viewModes: checkedValues("viewMode"),
+    cases: checkedValues("case"),
+    threads: checkedValues("threads"),
+    commits: checkedValues("commit"),
+    backends: checkedValues("backend")
+  };
+  const metricOptions = unique(rows.map(row => row.metric));
+  const defaultMetric = metricOptions.includes("time") ? "time" : metricOptions[0];
+  setCheckboxes("metric", metricOptions, previousMain.metrics, {}, [defaultMetric]);
+  const familyOptions = unique(rows
+    .filter(row => row.metric === metricValue())
+    .map(row => row.family));
+  const defaultFamily = familyOptions.includes("krige") ? "krige" : familyOptions[0];
+  setCheckboxes(
+    "family",
+    familyOptions,
+    previousMain.families,
+    {},
+    [defaultFamily]
+  );
+  setCheckboxes("viewMode", ["line", "bar"], previousMain.viewModes, modeLabels, ["line"]);
+  const benchRows = benchmarkRows();
+  const caseOptions = unique(benchRows.map(row => row.case));
+  const defaultCase = caseOptions.find(value => value.includes("extra_large")) || caseOptions[0];
+  setCheckboxes("case", caseOptions, previousMain.cases, {}, [defaultCase]);
+  const selectedCases = checkedValues("case");
+  const threadOptions = unique(benchRows
+    .filter(row => selectedCases.includes(row.case))
+    .map(row => row.threads));
+  const defaultThread = threadOptions.includes("threads_1") ? "threads_1" : threadOptions[0];
+  setCheckboxes("threads", threadOptions, previousMain.threads, {}, [defaultThread]);
+  const selectedThreads = checkedValues("threads");
+  const commitOptions = commitOrder(benchRows
+    .filter(row => selectedCases.includes(row.case) && selectedThreads.includes(row.threads))
+    .map(row => row.commit));
+  setCheckboxes("commit", commitOptions, previousMain.commits, {}, [lastValue(commitOptions)]);
+  const selectedCommits = checkedValues("commit");
+  const backendOptions = backends.filter(backend => benchRows.some(row =>
+    row.backend === backend &&
+    selectedCases.includes(row.case) &&
+    selectedThreads.includes(row.threads) &&
+    selectedCommits.includes(row.commit)
+  ));
+  setCheckboxes(
+    "backend",
+    backendOptions,
+    previousMain.backends,
+    labels,
+    backendOptions
+  );
+  const benchmark = selectedBenchmark();
+  const mode = viewModeValue() === "line" ? "Line plot" : "Bar plot";
+  document.getElementById("chart-title").textContent =
+    benchmark ? `${mode} - ${benchmark}` : mode;
+}
+
+function formatValue(row) {
+  const unit = metricUnits[row.metric];
+  return row.value * unit.factor;
+}
+
+function formatNumber(value) {
+  if (value >= 100) return value.toFixed(0);
+  if (value >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
+function axisMax(values) {
+  const maxValue = Math.max(...values, 0);
+  return maxValue > 0 ? maxValue * 1.16 : 1;
+}
+
+function orderedKeys(values) {
+  const seen = new Set();
+  const keys = [];
+  for (const value of values) {
+    if (!seen.has(value)) {
+      seen.add(value);
+      keys.push(value);
+    }
+  }
+  return keys;
+}
+
+function barGroupKey(row) {
+  return `${row.case}|${row.threads}|${row.commit}`;
+}
+
+function barGroupLabel(key, showThread, showCommit) {
+  const [caseName, threads, commit] = key.split("|");
+  const parts = [caseName];
+  if (showThread) parts.push(threads);
+  if (showCommit) parts.push(commit);
+  return parts.join(" · ");
+}
+
+function selectionSummary(values, noun) {
+  return values.length === 1 ? values[0] : `${values.length} ${noun}`;
+}
+
+function seriesLabel(key) {
+  const [backend, caseName, threads] = key.split("|");
+  return `${labels[backend] || backend} · ${caseName} · ${threads}`;
+}
+
+function chartSubtitle(data) {
+  const cases = checkedValues("case");
+  const threads = checkedValues("threads");
+  const commits = checkedValues("commit");
+  const selectedBackends = checkedValues("backend").map(value => labels[value] || value);
+  return [
+    data[0].benchmark,
+    selectionSummary(cases, "cases"),
+    selectionSummary(threads, "thread groups"),
+    selectionSummary(commits, "commits"),
+    selectionSummary(selectedBackends, "backends")
+  ].join(" · ");
+}
+
+function plotWidthFor(container, minimum, perItemWidth, itemCount) {
+  const available = Math.max(0, Math.floor(container.clientWidth - 18));
+  return Math.max(minimum, available, perItemWidth * itemCount + 180);
+}
+
+function barChartHeight(width) {
+  return Math.max(580, Math.min(720, Math.round(width * 0.34)));
+}
+
+function lineChartHeight(width) {
+  return Math.max(540, Math.min(680, Math.round(width * 0.30)));
+}
+
+function renderBarChart(data) {
+  const chart = document.getElementById("chart");
+  const legend = document.getElementById("legend");
+  const metric = data[0].metric;
+  const unit = metricUnits[metric];
+  const selectedThreads = checkedValues("threads");
+  const selectedCommits = checkedValues("commit");
+  const selectedBackends = checkedValues("backend");
+  const showThread = selectedThreads.length > 1;
+  const showCommit = selectedCommits.length > 1;
+  const groups = orderedKeys(data.map(barGroupKey));
+  const values = data.map(formatValue);
+  const maxValue = axisMax(values);
+  const margin = {top: 60, right: 34, bottom: 124, left: 88};
+  const backendCount = Math.max(1, selectedBackends.length);
+  const barGap = 0;
+  const barWidth = backendCount === 1 ? 48 : 40;
+  const clusterWidth = backendCount * barWidth + (backendCount - 1) * barGap;
+  const groupStep = clusterWidth + 34;
+  const availableWidth = Math.max(960, Math.floor(chart.clientWidth - 18));
+  const requiredWidth = margin.left + groups.length * groupStep + margin.right;
+  const width = Math.max(availableWidth, requiredWidth);
+  const height = barChartHeight(width);
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const usedPlotWidth = groups.length * groupStep;
+  const plotLeft = margin.left + Math.max(0, (plotWidth - usedPlotWidth) / 2);
+  const y = value => margin.top + plotHeight - (value / maxValue) * plotHeight;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img">`;
+  svg += `<text x="${margin.left}" y="26" class="title">${escapeHtml(chartSubtitle(data))}</text>`;
+  svg += `<text x="${margin.left}" y="45" class="axis-label">${unit.label} (${unit.unit}), lower is better</text>`;
+
+  for (let i = 0; i <= 5; i++) {
+    const value = (maxValue / 5) * i;
+    const yy = y(value);
+    svg += `<line x1="${margin.left}" x2="${width - margin.right}" y1="${yy}" y2="${yy}" class="grid" />`;
+    svg += `<text x="${margin.left - 10}" y="${yy + 4}" text-anchor="end" class="tick">${formatNumber(value)}</text>`;
+  }
+
+  groups.forEach((groupKey, groupIndex) => {
+    const groupX = plotLeft + groupIndex * groupStep + groupStep / 2;
+    const label = barGroupLabel(groupKey, showThread, showCommit);
+    svg += `<text x="${groupX}" y="${height - 46}" text-anchor="middle" class="tick" transform="rotate(-25 ${groupX} ${height - 46})">${escapeHtml(label)}</text>`;
+    selectedBackends.forEach((backend, backendIndex) => {
+      const row = data.find(item => barGroupKey(item) === groupKey && item.backend === backend);
+      if (!row) return;
+      const value = formatValue(row);
+      const x = groupX - clusterWidth / 2 + backendIndex * (barWidth + barGap) + barWidth / 2;
+      const yy = y(value);
+      const barHeight = margin.top + plotHeight - yy;
+      svg += `<rect x="${x - barWidth / 2}" y="${yy}" width="${barWidth}" height="${barHeight}" rx="3" fill="${colors[backend]}" opacity="0.86"><title>${escapeHtml(label)} · ${labels[backend]}: ${formatNumber(value)} ${unit.unit}</title></rect>`;
+      svg += `<text x="${x}" y="${yy - 8}" text-anchor="middle" class="bar-label">${formatNumber(value)}</text>`;
+    });
+  });
+
+  svg += `<line x1="${margin.left}" x2="${width - margin.right}" y1="${margin.top + plotHeight}" y2="${margin.top + plotHeight}" class="axis" />`;
+  svg += `<line x1="${margin.left}" x2="${margin.left}" y1="${margin.top}" y2="${margin.top + plotHeight}" class="axis" />`;
+  svg += `</svg>`;
+  chart.innerHTML = svg;
+  legend.innerHTML = selectedBackends.map(backend =>
+    `<span class="legend-chip"><span class="legend-swatch" style="background:${colors[backend]}"></span>${escapeHtml(labels[backend] || backend)}</span>`
+  ).join("");
+}
+
+function renderLineChart(data) {
+  const chart = document.getElementById("chart");
+  const legend = document.getElementById("legend");
+  const metric = data[0].metric;
+  const unit = metricUnits[metric];
+  const commits = commitOrder(data.map(row => row.commit));
+  const values = data.map(formatValue);
+  const maxValue = axisMax(values);
+  const width = plotWidthFor(chart, 960, 150, commits.length);
+  const height = lineChartHeight(width);
+  const margin = {top: 60, right: 42, bottom: 108, left: 88};
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const x = commit => {
+    if (commits.length === 1) return margin.left + plotWidth / 2;
+    return margin.left + commits.indexOf(commit) * (plotWidth / (commits.length - 1));
+  };
+  const y = value => margin.top + plotHeight - (value / maxValue) * plotHeight;
+  const groups = new Map();
+  for (const row of data) {
+    const key = `${row.backend}|${row.case}|${row.threads}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img">`;
+  svg += `<text x="${margin.left}" y="26" class="title">${escapeHtml(chartSubtitle(data))}</text>`;
+  svg += `<text x="${margin.left}" y="45" class="axis-label">${unit.label} (${unit.unit}), lower is better</text>`;
+  for (let i = 0; i <= 5; i++) {
+    const value = (maxValue / 5) * i;
+    const yy = y(value);
+    svg += `<line x1="${margin.left}" x2="${width - margin.right}" y1="${yy}" y2="${yy}" class="grid" />`;
+    svg += `<text x="${margin.left - 10}" y="${yy + 4}" text-anchor="end" class="tick">${formatNumber(value)}</text>`;
+  }
+  commits.forEach(commit => {
+    const xx = x(commit);
+    const row = rows.find(item => item.commit === commit);
+    svg += `<text x="${xx}" y="${height - 56}" text-anchor="middle" class="tick" transform="rotate(-25 ${xx} ${height - 56})">${escapeHtml(commit)}</text>`;
+    if (row && row.date_label !== "-") {
+      svg += `<text x="${xx}" y="${height - 30}" text-anchor="middle" class="tick">${escapeHtml(row.date_label)}</text>`;
+    }
+  });
+
+  Array.from(groups.entries()).forEach(([key, group], index) => {
+    const color = linePalette[index % linePalette.length];
+    const byCommit = new Map(group.map(row => [row.commit, row]));
+    const points = commits
+      .filter(commit => byCommit.has(commit))
+      .map(commit => {
+        const row = byCommit.get(commit);
+        return {x: x(commit), y: y(formatValue(row)), row};
+      });
+    if (!points.length) return;
+    svg += `<polyline class="line-path" stroke="${color}" points="${points.map(point => `${point.x},${point.y}`).join(" ")}"><title>${escapeHtml(seriesLabel(key))}</title></polyline>`;
+    for (const point of points) {
+      const value = formatValue(point.row);
+      svg += `<circle class="point" cx="${point.x}" cy="${point.y}" r="3.5" stroke="${color}"><title>${escapeHtml(seriesLabel(key))} · ${point.row.commit}: ${formatNumber(value)} ${unit.unit}</title></circle>`;
+    }
+  });
+
+  svg += `<line x1="${margin.left}" x2="${width - margin.right}" y1="${margin.top + plotHeight}" y2="${margin.top + plotHeight}" class="axis" />`;
+  svg += `<line x1="${margin.left}" x2="${margin.left}" y1="${margin.top}" y2="${margin.top + plotHeight}" class="axis" />`;
+  svg += `</svg>`;
+  chart.innerHTML = svg;
+  legend.innerHTML = Array.from(groups.keys()).map((key, index) =>
+    `<span class="legend-chip"><span class="legend-swatch" style="background:${linePalette[index % linePalette.length]}"></span>${escapeHtml(seriesLabel(key))}</span>`
+  ).join("");
+}
+
+function renderChart() {
+  const data = filteredRows();
+  const chart = document.getElementById("chart");
+  const legend = document.getElementById("legend");
+  if (!data.length) {
+    chart.innerHTML = "<p>No matching ASV rows for this selection.</p>";
+    legend.innerHTML = "";
+    return;
+  }
+  if (viewModeValue() === "line") {
+    renderLineChart(data);
+  } else {
+    renderBarChart(data);
+  }
+}
+
+function renderAll() {
+  renderChart();
+}
+
+for (const id of ["metric", "family", "viewMode"]) {
+  document.getElementById(id).addEventListener("change", event => {
+    enforceSingleChoice(id, event);
+    refreshOptions();
+    renderAll();
+  });
+}
+for (const id of ["case", "threads", "commit", "backend"]) {
+  document.getElementById(id).addEventListener("change", event => {
+    enforceAtLeastOne(id, event);
+    refreshOptions();
+    renderAll();
+  });
+}
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderAll, 120);
+});
+refreshOptions();
+renderAll();
+</script>
+</body>
+</html>
